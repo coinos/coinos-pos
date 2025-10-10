@@ -1,3 +1,5 @@
 littlefs.img
 build
 data
+pcb/gerbers
+pcb/fp-*

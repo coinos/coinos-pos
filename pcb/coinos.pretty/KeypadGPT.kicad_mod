@@ -1,0 +1,33 @@
+(footprint "Keypad_3x4_69.3x51.4_M3_Header1x7" (layer "F.Cu")
+  (descr "3x4 keypad module, 69.3mm x 51.4mm body, M3 NPTH corners, 1x7 2.54mm header")
+  (tags "keypad 3x4 matrix M3 1x7 2.54mm")
+  (attr through_hole)
+
+  (fp_text reference "REF**" (at 0 -39) (layer "F.SilkS")
+    (effects (font (size 1 1) (thickness 0.15))))
+  (fp_text value "Keypad_3x4" (at 0 39) (layer "F.Fab")
+    (effects (font (size 1 1) (thickness 0.15))))
+
+  (fp_line (start -25.7 -34.65) (end 25.7 -34.65) (layer "F.Fab") (width 0.12))
+  (fp_line (start 25.7 -34.65) (end 25.7 34.65) (layer "F.Fab") (width 0.12))
+  (fp_line (start 25.7 34.65) (end -25.7 34.65) (layer "F.Fab") (width 0.12))
+  (fp_line (start -25.7 34.65) (end -25.7 -34.65) (layer "F.Fab") (width 0.12))
+
+  (fp_line (start -26.2 -35.15) (end 26.2 -35.15) (layer "F.CrtYd") (width 0.05))
+  (fp_line (start 26.2 -35.15) (end 26.2 35.15) (layer "F.CrtYd") (width 0.05))
+  (fp_line (start 26.2 35.15) (end -26.2 35.15) (layer "F.CrtYd") (width 0.05))
+  (fp_line (start -26.2 35.15) (end -26.2 -35.15) (layer "F.CrtYd") (width 0.05))
+
+  (pad "" np_thru_hole circle (at -22.7 -31.65) (size 3.4 3.4) (drill 3.2) (layers "*.Cu" "*.Mask"))
+  (pad "" np_thru_hole circle (at  22.7 -31.65) (size 3.4 3.4) (drill 3.2) (layers "*.Cu" "*.Mask"))
+  (pad "" np_thru_hole circle (at -22.7  31.65) (size 3.4 3.4) (drill 3.2) (layers "*.Cu" "*.Mask"))
+  (pad "" np_thru_hole circle (at  22.7  31.65) (size 3.4 3.4) (drill 3.2) (layers "*.Cu" "*.Mask"))
+
+  (pad "1" thru_hole circle (at -7.62 -37.2) (size 1.9 1.9) (drill 1.0) (layers "*.Cu" "*.Mask"))
+  (pad "2" thru_hole circle (at -5.08 -37.2) (size 1.9 1.9) (drill 1.0) (layers "*.Cu" "*.Mask"))
+  (pad "3" thru_hole circle (at -2.54 -37.2) (size 1.9 1.9) (drill 1.0) (layers "*.Cu" "*.Mask"))
+  (pad "4" thru_hole circle (at  0.00 -37.2) (size 1.9 1.9) (drill 1.0) (layers "*.Cu" "*.Mask"))
+  (pad "5" thru_hole circle (at  2.54 -37.2) (size 1.9 1.9) (drill 1.0) (layers "*.Cu" "*.Mask"))
+  (pad "6" thru_hole circle (at  5.08 -37.2) (size 1.9 1.9) (drill 1.0) (layers "*.Cu" "*.Mask"))
+  (pad "7" thru_hole circle (at  7.62 -37.2) (size 1.9 1.9) (drill 1.0) (layers "*.Cu" "*.Mask"))
+)
