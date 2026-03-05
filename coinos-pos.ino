@@ -113,6 +113,7 @@ void resetAll() {
   if (currentInvoiceId != "") ws_disconnect();
   currentInvoiceId = "";
   invoicePaid = false;
+  historyIndex = -1;
   showAmount("*:Back   #:Enter");
 
   autoSubmitDoneForCurrentAmount = false;
