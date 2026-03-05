@@ -11,6 +11,8 @@
 #include "storage.h"
 #include "wifi_net.h"
 #include "payments.h"
+#include "nfc.h"
+#include "ws.h"
 #include "esp_sleep.h"
 #include "driver/gpio.h"
 
@@ -23,6 +25,7 @@ Keypad keypad = Keypad(makeKeymap(KEYS), (byte*)ROW_PINS, (byte*)COL_PINS, ROWS,
 // ---- State ----
 Credentials creds;
 String token;
+String merchantLnurl;
 uint64_t cents = 0;
 uint64_t submittedCents = 0;
 uint8_t digitsTyped = 0;
@@ -31,11 +34,18 @@ String currentInvoiceId = "";
 String currentInvoiceFiat = "";
 bool invoicePaid = false;
 
+
+// Auto-submit after 5 seconds of no digit changes
+const unsigned long AUTO_SUBMIT_DELAY_MS = 2000;
+
+unsigned long lastAmountChange = 0;
+bool autoSubmitDoneForCurrentAmount = false;
+
 Payment history[10];
 int historyCount = 0;
 int historyIndex = -1;
 
-unsigned long lastPoll = 0;
+unsigned long lastHeartbeat = 0;
 unsigned long lastActivity = 0;
 bool isAsleep = false;
 
@@ -91,7 +101,6 @@ void wakeFromSleep() {
   delay(1);
   display.clearDisplay();
   renderLine("Keypad Ready");
-  lastPoll = millis();
   isAsleep = false;
   lastActivity = millis();
   Serial.println("WAKE");
@@ -101,9 +110,13 @@ void resetAll() {
   digitalWrite(LED_GREEN_PIN, LOW);
   cents = 0;
   digitsTyped = 0;
+  if (currentInvoiceId != "") ws_disconnect();
   currentInvoiceId = "";
   invoicePaid = false;
   showAmount("*:Back   #:Enter");
+
+  autoSubmitDoneForCurrentAmount = false;
+  lastAmountChange = millis();
 }
 
 void renderPayment() {
@@ -235,6 +248,8 @@ void submitInvoice() {
       currentInvoiceFiat = fiat;
       currentInvoiceId = (const char*)doc["id"];
       invoicePaid = false;
+      ws_connect();
+      ws_subscribe(currentInvoiceId);
       renderLine(lineStr, "Waiting for payment..");
     } else {
       renderLine(lineStr, "Invoice error"); delay(800);
@@ -245,47 +260,22 @@ void submitInvoice() {
   http.end();
 }
 
-void pollInvoice() {
-  if (WiFi.status() != WL_CONNECTED || currentInvoiceId == "" || invoicePaid) return;
+void handlePayment(long long amount, long long tipSats) {
+  if (currentInvoiceId == "" || invoicePaid) return;
 
-  HTTPClient http;
-  http.setConnectTimeout(300);
-  http.setTimeout(400);
-  http.setReuse(true);
-  http.begin(String(API_HOST) + "/invoice/" + currentInvoiceId);
+  lastActivity = millis();
+  invoicePaid = true;
+  ws_disconnect();
+  digitalWrite(LED_GREEN_PIN, HIGH);
 
-  int code = http.GET();
-  if (code == HTTP_CODE_OK) {
-    String payload = http.getString();
-
-    StaticJsonDocument<128> filter;
-    filter["received"]=true; filter["amount"]=true; filter["tip"]=true;
-
-    StaticJsonDocument<256> doc;
-    auto err = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
-    if (!err) {
-      long long received = doc["received"] | 0LL;
-      long long amount   = doc["amount"]   | 0LL;
-      long long tipSats  = doc["tip"]      | 0LL;
-
-      if (received >= amount && amount > 0) {
-        lastActivity = millis();
-        invoicePaid = true;
-
-        digitalWrite(LED_GREEN_PIN, HIGH);
-
-        String header = "$" + currentInvoiceFiat;
-        if (tipSats > 0 && submittedCents > 0) {
-          double centsPerSat = (double)submittedCents / (double)amount;
-          unsigned long long tipCents =
-            (unsigned long long) llround((double)tipSats * centsPerSat);
-          header += "+$" + formatCents(tipCents);
-        }
-        startCheckmarkAnimation(header.c_str());
-      }
-    }
+  String header = "$" + currentInvoiceFiat;
+  if (tipSats > 0 && submittedCents > 0) {
+    double centsPerSat = (double)submittedCents / (double)amount;
+    unsigned long long tipCents =
+      (unsigned long long) llround((double)tipSats * centsPerSat);
+    header += "+$" + formatCents(tipCents);
   }
-  http.end();
+  startCheckmarkAnimation(header.c_str());
 }
 
 // ---- Key handling ----
@@ -303,15 +293,30 @@ void onKey(char k) {
       renderPayment();
       return;
     }
-    cents /= 10; digitsTyped--; showAmount("*:Back   #:Enter");
+
+    // Backspace a digit
+    cents /= 10; 
+    digitsTyped--; 
+    showAmount("*:Back   #:Enter");
     digitalWrite(LED_GREEN_PIN, LOW);
-    currentInvoiceId = ""; invoicePaid = false;
+    currentInvoiceId = ""; 
+    invoicePaid = false;
+
+    // amount changed -> reset auto-submit timer
+    lastAmountChange = millis();
+    autoSubmitDoneForCurrentAmount = false;
+
     return;
   }
 
   if (k == '#') {
     digitalWrite(LED_GREEN_PIN, LOW);
-    if (currentInvoiceId != "" || invoicePaid) { resetAll(); return; }
+    if (currentInvoiceId != "" || invoicePaid) { 
+      resetAll(); 
+      return; 
+    }
+    // manual submit: mark as done for this amount
+    autoSubmitDoneForCurrentAmount = true;
     submitInvoice();
     return;
   }
@@ -324,6 +329,10 @@ void onKey(char k) {
       cents = cents * 10 + v;
       digitsTyped++;
       showAmount("*:Back   #:Enter");
+
+      // amount changed -> reset auto-submit timer
+      lastAmountChange = millis();
+      autoSubmitDoneForCurrentAmount = false;
     }
   }
 }
@@ -353,7 +362,32 @@ void setup() {
   }
 
   ui_begin();
+  nfc_begin();  // PN532 on shared I2C bus (addr 0x24)
   pinMode(LED_GREEN_PIN, OUTPUT);
+
+  // Fetch username from API to derive LNURL for NFC
+  if (token.length() > 0 && ensureWifiConnected(creds, 20000)) {
+    HTTPClient http;
+    http.begin(String(API_HOST) + "/me");
+    http.addHeader("Authorization", "Bearer " + token);
+    int code = http.GET();
+    if (code == HTTP_CODE_OK) {
+      StaticJsonDocument<64> filter; filter["username"] = true;
+      StaticJsonDocument<256> doc;
+      auto err = deserializeJson(doc, http.getString(), DeserializationOption::Filter(filter));
+      if (!err && doc["username"]) {
+        String username = (const char*)doc["username"];
+        merchantLnurl = nfc_deriveLnurl(username);
+        Serial.printf("Merchant: %s\n", username.c_str());
+      }
+    }
+    http.end();
+
+    // Prepare websocket for payment notifications (connects on invoice submit)
+    onPaymentReceived = handlePayment;
+    ws_init(token);
+  }
+
   resetAll();
   lastActivity = millis();
 }
@@ -377,16 +411,44 @@ void loop() {
       : INACTIVITY_WITH_INVOICE_MS;
 
   if (!isAsleep) {
+    // Is there an amount on screen that we intend to auto-submit?
+    bool pendingAutoSubmit =
+      (currentInvoiceId == "" && !invoicePaid &&
+       digitsTyped > 0 && !autoSubmitDoneForCurrentAmount);
+
+    // --- AUTO-SUBMIT IF AMOUNT UNCHANGED FOR 5s ---
+    if (pendingAutoSubmit &&
+        (now - lastAmountChange) >= AUTO_SUBMIT_DELAY_MS) {
+
+      autoSubmitDoneForCurrentAmount = true;
+      submitInvoice();
+      touchActivity(); // so we don't immediately go to sleep
+      // NOTE: after this, currentInvoiceId should be non-empty on success,
+      // so pendingAutoSubmit will be false on the next loop iteration.
+    }
+    // ----------------------------------------------
+
+    // NFC: emulate tag with merchant's LNURL while invoice is active
+    if (currentInvoiceId != "" && !invoicePaid && merchantLnurl.length() > 0) {
+      nfc_emulate(merchantLnurl.c_str());
+      if (nfc_poll()) touchActivity();
+    } else {
+      nfc_stop();
+    }
+
     if (CM.active) {
       renderCheckmarkFrame();
-    } else if (idle >= timeout) {
+    } else if (idle >= timeout && !pendingAutoSubmit) {
+      // Only sleep if there's no auto-submit waiting to happen
       goToSleep();
-    } else if (currentInvoiceId != "" && !invoicePaid &&
-              (now - lastPoll) > POLL_INTERVAL_MS &&
-              (now - lastActivity) > POLL_IDLE_GRACE_MS) {
-      lastPoll = now;
-      pollInvoice();
     }
+  }
+
+  // Process websocket events and send heartbeat
+  ws_loop();
+  if (wsEnabled && now - lastHeartbeat >= 2000) {
+    lastHeartbeat = now;
+    ws_heartbeat();
   }
 
   delay(1);

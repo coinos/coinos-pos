@@ -30,8 +30,6 @@ static const char* API_HOST = "https://coinos.io/api";
 #define MAX_DIGITS           12
 #define MAX_LINE             32
 
-// Polling / sleep
-#define POLL_INTERVAL_MS     2000UL
-#define POLL_IDLE_GRACE_MS    200UL
+// Sleep timeouts
 #define INACTIVITY_NO_INVOICE_MS   (30UL * 1000UL)
 #define INACTIVITY_WITH_INVOICE_MS (300UL * 1000UL)
