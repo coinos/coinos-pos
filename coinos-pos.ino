@@ -402,7 +402,10 @@ void loop() {
   // Throttled debug
   if (millis() - lastLog >= LOG_INTERVAL) {
     lastLog = millis();
-    Serial.print("idle(ms): "); Serial.println(millis() - lastActivity);
+    Serial.printf("idle(ms): %lu  wifi: %s ssid=%s ip=%s\n",
+                  millis() - lastActivity,
+                  WiFi.status() == WL_CONNECTED ? "up" : "down",
+                  creds.ssid.c_str(), WiFi.localIP().toString().c_str());
   }
 
   unsigned long now = millis();
