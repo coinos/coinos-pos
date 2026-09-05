@@ -28,7 +28,10 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
         case WStype_CONNECTED:
             Serial.println("WS connected");
             wsConnected = true;
-            wsSend("login", ("\"" + wsToken + "\"").c_str());
+            // Deliberately no "login" here. Invoice subscriptions are
+            // unauthenticated on the server, and logging in with a read-only
+            // token used to get the socket closed a second later (dropping the
+            // subscription). Subscribe-only works against every server version.
             if (wsPendingInvoiceId.length() > 0) {
                 wsSend("subscribe", "{\"id\":\"" + wsPendingInvoiceId + "\"}");
             }
@@ -36,6 +39,11 @@ static void wsEvent(WStype_t type, uint8_t* payload, size_t length) {
 
         case WStype_DISCONNECTED:
             Serial.println("WS disconnected");
+            wsConnected = false;
+            break;
+
+        case WStype_ERROR:
+            Serial.printf("WS error: %.*s\n", (int)length, (const char*)payload);
             wsConnected = false;
             break;
 
@@ -70,6 +78,11 @@ inline void ws_init(const String& token) {
     wsToken = token;
     ws.onEvent(wsEvent);
     ws.setReconnectInterval(5000);
+    // The library sends no Accept header, and Cloudflare's managed WAF rule
+    // "Anomaly:Header:Accept - Missing or Empty" challenges the handshake
+    // (HTTP 403) without one. "Origin: file://" is the library's own default,
+    // repeated here because setExtraHeaders replaces it.
+    ws.setExtraHeaders("Origin: file://\r\nAccept: */*");
 }
 
 inline void ws_connect() {
@@ -98,5 +111,7 @@ inline void ws_subscribe(const String& invoiceId) {
 }
 
 inline void ws_heartbeat() {
-    wsSend("heartbeat", ("\"" + wsToken + "\"").c_str());
+    // Token-less heartbeat: keeps the connection alive through proxies and
+    // Bun's idle timeout without asking the server to authenticate us.
+    wsSend("heartbeat", "null");
 }
