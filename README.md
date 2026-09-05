@@ -21,6 +21,14 @@ Design files for the custom PCB and case are included in this repository.
 
 ## Setup
 
-Firmware can be installed with a USB C cable either using Arduino IDE or arduino-cli or visit https://coinos.io/pos to flash from the web.
+Firmware can be installed with a USB C cable either using Arduino IDE or arduino-cli or visit https://coinos.io/pos to flash from the web. The web flasher's "Flash latest release" button installs the firmware published at https://coinos.io/firmware/manifest.json without touching the device's wifi/token config.
 
-The latest firmware image can be found under [Releases](https://github.com/coinos/coinos-pos/releases)
+To build and publish a new release to the site, run `./publish.sh` (expects a coinos-ui checkout at `~/coinos-ui` or `$COINOS_UI`), then commit and deploy coinos-ui.
+
+Build locally with:
+
+```
+arduino-cli compile -b esp32:esp32:esp32c3:CDCOnBoot=cdc --build-property build.partitions=min_spiffs --build-path=build coinos-pos.ino -u -p /dev/ttyACM0
+```
+
+`CDCOnBoot=cdc` routes `Serial` to the XIAO's USB-C port so `cat /dev/ttyACM0` shows the device log.
