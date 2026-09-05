@@ -5,6 +5,17 @@
 #include "ui.h"  // <- your OLED helpers (Adafruit_SH1106G display, setCursorOffset, renderLine, drawThickLine, etc.)
 
 // --- tiny UI helpers ---
+// Print "SSID: <name>", or an explicit hint when no config was loaded, so a
+// blank line on the OLED never gets mistaken for a wifi problem.
+inline void drawSsidLine(const String& ssid) {
+  if (ssid.length() == 0) {
+    display.println("No config.txt!");
+  } else {
+    display.print("SSID: ");
+    display.println(ssid);
+  }
+}
+
 inline void drawWifiConnectingUI(const String& ssid, uint8_t frame, uint32_t elapsed, uint32_t timeoutMs) {
   static const char* SPIN = "|/-\\";
   float t = timeoutMs ? (float)elapsed / (float)timeoutMs : 0.f;
@@ -28,7 +39,7 @@ inline void drawWifiConnectingUI(const String& ssid, uint8_t frame, uint32_t ela
   // SSID (small)
   display.setTextSize(1);
   setCursorOffset(0, 40);
-  display.println(ssid);
+  drawSsidLine(ssid);
 
   // Progress bar (uses your thick line helper)
   int x0 = X_OFFSET, x1 = X_OFFSET + 112;     // 128px wide screen, leave 8px side margin
@@ -60,7 +71,7 @@ inline void drawWifiConnectedUI(const IPAddress& ip) {
   display.display();
 }
 
-inline void drawWifiFailedUI() {
+inline void drawWifiFailedUI(const String& ssid) {
   display.clearDisplay();
   display.setTextColor(SH110X_WHITE);
   display.setTextWrap(false);
@@ -74,7 +85,9 @@ inline void drawWifiFailedUI() {
   display.println("Timeout");
 
   display.setTextSize(1);
-  setCursorOffset(0, 48);
+  setCursorOffset(0, 40);
+  drawSsidLine(ssid);
+  setCursorOffset(0, 52);
   display.println("Check SSID/password");
   display.display();
 }
@@ -113,7 +126,7 @@ inline bool ensureWifiConnected(const Credentials& creds,
     drawWifiConnectedUI(WiFi.localIP());
     return true;
   } else {
-    drawWifiFailedUI();
+    drawWifiFailedUI(creds.ssid);
     delay(3000);
     return false;
   }
