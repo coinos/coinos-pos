@@ -31,5 +31,5 @@ static const char* API_HOST = "https://coinos.io/api";
 #define MAX_LINE             32
 
 // Sleep timeouts
-#define INACTIVITY_NO_INVOICE_MS   (30UL * 1000UL)
+#define INACTIVITY_NO_INVOICE_MS   (600UL * 1000UL)
 #define INACTIVITY_WITH_INVOICE_MS (300UL * 1000UL)
