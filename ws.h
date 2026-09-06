@@ -1,6 +1,7 @@
 #pragma once
 #include <WebSocketsClient.h>
 #include <ArduinoJson.h>
+#include "config.h"
 
 static WebSocketsClient ws;
 static bool wsConnected = false;
@@ -87,7 +88,11 @@ inline void ws_init(const String& token) {
 
 inline void ws_connect() {
     if (wsEnabled) return;
-    ws.beginSSL("coinos.io", 443, "/ws");
+    // The registrar authenticates the socket by the POS token on the URL;
+    // there is no login message.
+    static String path;
+    path = String(POS_WS_PATH) + "?token=" + wsToken;
+    ws.beginSSL(POS_WS_HOST, 443, path.c_str());
     wsEnabled = true;
 }
 

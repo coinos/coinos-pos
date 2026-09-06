@@ -23,8 +23,14 @@ static const char KEYS[ROWS][COLS] = {
   {'*','0','#'}
 };
 
-// API
-static const char* API_HOST = "https://coinos.io/api";
+// API — the coinos v3 name registrar's POS endpoints (names/server.js in
+// coinosv3). The token in config.txt is a POS token minted by the merchant's
+// wallet (Settings → payment address → Point of sale), scoped to one name:
+// it can ring up sales and watch them settle, never spend.
+static const char* API_HOST = "https://names.coinos.io/pos";
+#define POS_WS_HOST "names.coinos.io"
+#define POS_WS_PATH "/pos/ws"
+#define POS_LNURL_BASE "https://names.coinos.io/lnurlp/"
 
 // UX limits
 #define MAX_DIGITS           12

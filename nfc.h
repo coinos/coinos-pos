@@ -84,8 +84,11 @@ static String bech32_encode_lnurl(const char* url) {
 }
 
 // Derive full LNURL from username
+// The registrar's lnurlp for the name serves the sale the terminal just rang
+// up (newest unpaid, under five minutes old) or a free-amount request. Wrapped
+// in coinos.io/ln/ so a phone with no lightning wallet lands on a pay page.
 static String nfc_deriveLnurl(const String& username) {
-    String url = "https://coinos.io/p/" + username;
+    String url = String(POS_LNURL_BASE) + username;
     return "https://coinos.io/ln/" + bech32_encode_lnurl(url.c_str());
 }
 
