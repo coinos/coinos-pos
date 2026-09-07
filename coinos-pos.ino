@@ -81,11 +81,11 @@ void goToSleep() {
     pinMode(COL_PINS[i], INPUT_PULLUP);
   }
 
-  // 2) Deep-sleep GPIO wake on wake-capable columns only (GPIO5, GPIO3)
+  // 2) Deep-sleep GPIO wake on every column that can (GPIO0-5 on the C3)
   uint64_t wakeMask = 0;
   for (int i = 0; i < COLS; ++i) {
     int g = COL_PINS[i];
-    if (g == 5 || g == 3) wakeMask |= (1ULL << g);
+    if (g <= 5) wakeMask |= (1ULL << g);
   }
   esp_deep_sleep_enable_gpio_wakeup(wakeMask, ESP_GPIO_WAKEUP_GPIO_LOW);
 
