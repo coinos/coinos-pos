@@ -415,12 +415,33 @@ void loop() {
       Key &k = keypad.key[i];
       if (k.kchar == NO_KEY || !k.stateChanged || k.kstate != PRESSED) continue;
       if (pendingKey) {
-        bool chord = (pendingKey == '*' && k.kchar == '#') || (pendingKey == '#' && k.kchar == '*');
-        if (chord) {
+        auto chord = [&](char a, char b) {
+          return (pendingKey == a && k.kchar == b) || (pendingKey == b && k.kchar == a);
+        };
+        if (chord('*', '#')) {
           // *+# together: reboot (a stuck terminal has no other way out)
           renderLine("", "Rebooting..");
           delay(300);
           ESP.restart();
+        }
+        if (chord('0', '#')) {
+          // 0+# together: sleep now, exactly as the idle timeout would.
+          // A held key pulls its column low, which is the wake source, so
+          // wait for both to be released first.
+          renderLine("", "Sleeping..");
+          unsigned long t0 = millis();
+          while (millis() - t0 < 3000) {
+            keypad.getKeys();
+            bool down = false;
+            for (int j = 0; j < LIST_MAX; j++) {
+              Key &kk = keypad.key[j];
+              if (kk.kchar != NO_KEY && (kk.kstate == PRESSED || kk.kstate == HOLD)) down = true;
+            }
+            if (!down) break;
+            delay(10);
+          }
+          delay(50);
+          goToSleep(); // never returns
         }
         onKey(pendingKey); touchActivity();
       }
