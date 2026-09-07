@@ -172,9 +172,11 @@ void renderPayment() {
 }
 
 bool fetchPayments() {
-  if (!ensureWifiConnected(creds, 20000)) return false;
+  if (!ensureWifiConnected(creds, 5000, []() { return keypad.getKey() == '*'; }, 800)) return false;
 
   HTTPClient http;
+  http.setConnectTimeout(3000);
+  http.setTimeout(3000);
   http.begin(String(API_HOST) + "/payments?limit=10&received=true");
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + token);
@@ -227,12 +229,18 @@ void submitInvoice() {
   String fiat = formatCents(cents);
   if (fiat.toFloat() <= 0 || currentInvoiceId != "") { resetAll(); return; }
 
-  if (!ensureWifiConnected(creds, 20000)) return;
+  // Bounded: a terminal carried out of wifi range must fail fast and hand
+  // the keypad back, not sit on "Submitting..." (it once sat there for the
+  // better part of a minute). Worst case here is about 10s — 3s wifi, 3s
+  // connect, 3s response — and * cancels the wifi wait.
+  if (!ensureWifiConnected(creds, 3000, []() { return keypad.getKey() == '*'; }, 800)) return;
 
   renderLine(lineStr, "Submitting...");
   submittedCents = cents;
 
   HTTPClient http;
+  http.setConnectTimeout(3000);
+  http.setTimeout(3000);
   http.begin(String(API_HOST) + "/invoice");
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + token);

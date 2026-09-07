@@ -95,7 +95,8 @@ inline void drawWifiFailedUI(const String& ssid) {
 // --- drop-in replacement for your ensureWifiConnected ---
 inline bool ensureWifiConnected(const Credentials& creds,
                                     uint32_t timeoutMs,
-                                    const std::function<bool(void)>& allowCancel = nullptr) {
+                                    const std::function<bool(void)>& allowCancel = nullptr,
+                                    uint32_t failHoldMs = 3000) {
   if (WiFi.status() == WL_CONNECTED) {
     return true;
   }
@@ -127,7 +128,7 @@ inline bool ensureWifiConnected(const Credentials& creds,
     return true;
   } else {
     drawWifiFailedUI(creds.ssid);
-    delay(3000);
+    delay(failHoldMs);
     return false;
   }
 }
