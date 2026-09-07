@@ -13,13 +13,22 @@
 
 // Keypad. Deep sleep wakes on a COLUMN pulled low, and on the ESP32-C3 only
 // GPIO0-5 can wake the chip, so every column should live on one of those.
-// Column 0 (keys 1 4 7 *) is on GPIO10 here and cannot wake the terminal;
-// swap that wire with the row on GPIO2 (D0 <-> D10 on the XIAO) and set
-// ROW_PINS = {4, 8, 10, 9}, COL_PINS = {2, 5, 3} to make every key wake it.
+//   BOARD_REV 1: the first PCB run. Column 0 (keys 1 4 7 *) is on GPIO10
+//     and cannot wake the terminal from sleep.
+//   BOARD_REV 2: pcb/pos.kicad_sch from 2026-09-07 on — keypad pin 4 and
+//     pin 7 swapped between GPIO2 and GPIO10, so every key wakes it.
+#ifndef BOARD_REV
+#define BOARD_REV 1
+#endif
 #define ROWS 4
 #define COLS 3
+#if BOARD_REV >= 2
+static const byte ROW_PINS[ROWS] = {4, 8, 10, 9};
+static const byte COL_PINS[COLS] = {2, 5, 3};
+#else
 static const byte ROW_PINS[ROWS] = {4, 8, 2, 9};
 static const byte COL_PINS[COLS] = {10, 5, 3};
+#endif
 static const char KEYS[ROWS][COLS] = {
   {'1','2','3'},
   {'4','5','6'},
