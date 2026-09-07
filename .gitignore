@@ -1,6 +1,16 @@
 littlefs.img
 build
 data
-pcb/gerbers
-pcb/fp-*
 *.bin
+
+# KiCad: version the design (sch, pcb, pro, symbols, footprints, fp-lib-table
+# and the gerber zips that were actually sent to the fab); not caches,
+# backups, locks or loose plot output.
+pcb/fp-info-cache
+pcb/gerbers/
+pcb/*-backups/
+pcb/*.lck
+pcb/_autosave-*
+pcb/*-bak
+pcb/*.kicad_pcb-bak
+pcb/*.kicad_sch-bak
