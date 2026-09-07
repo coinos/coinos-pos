@@ -402,10 +402,37 @@ void setup() {
 }
 
 void loop() {
-  // Fast keypad read
-  char key = keypad.getKey();
-  if (!key) key = keypad.getKey();
-  if (key) { onKey(key); touchActivity(); }
+  // Keypad: full-matrix scan so a chord can be recognised. A press is held
+  // for a short window before it acts, so the second key of a chord can join
+  // it — otherwise # alone would submit a sale before *+# was seen. * and #
+  // share a row on different columns, which a diode-less 4x3 matrix reads
+  // cleanly (ghosting needs two keys in each of two rows and two columns).
+  static char pendingKey = 0;
+  static unsigned long pendingAt = 0;
+  const unsigned long CHORD_WINDOW_MS = 120;
+  if (keypad.getKeys()) {
+    for (int i = 0; i < LIST_MAX; i++) {
+      Key &k = keypad.key[i];
+      if (k.kchar == NO_KEY || !k.stateChanged || k.kstate != PRESSED) continue;
+      if (pendingKey) {
+        bool chord = (pendingKey == '*' && k.kchar == '#') || (pendingKey == '#' && k.kchar == '*');
+        if (chord) {
+          // *+# together: reboot (a stuck terminal has no other way out)
+          renderLine("", "Rebooting..");
+          delay(300);
+          ESP.restart();
+        }
+        onKey(pendingKey); touchActivity();
+      }
+      pendingKey = k.kchar;
+      pendingAt = millis();
+    }
+  }
+  if (pendingKey && millis() - pendingAt >= CHORD_WINDOW_MS) {
+    char key = pendingKey;
+    pendingKey = 0;
+    onKey(key); touchActivity();
+  }
 
   // Throttled debug
   if (millis() - lastLog >= LOG_INTERVAL) {
