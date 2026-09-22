@@ -21,7 +21,7 @@ Design files for the custom PCB and case are included in this repository.
 
 ## Setup
 
-Firmware can be installed with a USB C cable either using Arduino IDE or arduino-cli or visit https://coinos.io/pos to flash from the web. The web flasher's "Flash latest release" button installs the firmware published at https://coinos.io/firmware/manifest.json without touching the device's wifi/token config.
+Firmware can be installed with a USB C cable either using Arduino IDE or arduino-cli or visit https://coinos.io/flash to flash from the web. The web flasher's "Flash latest release" button installs the firmware published at https://coinos.io/firmware/manifest.json without touching the device's wifi/token config.
 
 To build and publish a new release to the site, run `./publish.sh` (expects a coinos-ui checkout at `~/coinos-ui` or `$COINOS_UI`), then commit and deploy coinos-ui.
 

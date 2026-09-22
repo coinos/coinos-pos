@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the firmware and publish it to the coinos-ui site as the "latest
-# release" the web flasher (coinos.io/pos) offers. Writes:
+# release" the web flasher (coinos.io/flash) offers. Writes:
 #   <coinos-ui>/static/firmware/{bootloader,partitions,boot_app0,coinos-pos}.bin
 #   <coinos-ui>/static/firmware/manifest.json
 # Usage: ./publish.sh            (build + publish)
